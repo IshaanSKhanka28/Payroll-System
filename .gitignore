@@ -149,3 +149,7 @@ db.sqlite3
 .idea/
 *.swp
 *.swo
+
+# Code Explanations Document (Local-only)
+code_explanations.md
+
