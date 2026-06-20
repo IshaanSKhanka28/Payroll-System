@@ -9,8 +9,9 @@ from sqlalchemy import func
 from app.models.payroll import PayrollRun, PayrollRunStatus, PayrollTransaction, PayrollTransactionStatus
 from app.models.employee import Employee, EmployeeStatus
 from app.models.salary_component import SalaryComponentType
-from app.models.notification import Notification, NotificationType
+from app.models.notification import NotificationType
 from app.database import AsyncSessionLocal
+from app.services.notification_service import create_notification
 
 def calculate_net_salary(employee, salary_components) -> dict:
     base = employee.base_salary
@@ -119,13 +120,13 @@ async def process_transactions(run_id: uuid.UUID, employee_ids: list[uuid.UUID])
                         processed_at=func.now()
                     )
                     session.add(tx)
-                    notif = Notification(
+                    create_notification(
+                        session=session,
                         user_id=employee.user_id,
                         type=NotificationType.PAYROLL_CREDITED,
                         title="Salary Credited",
                         message=f"Your salary of Net: {sal_details['net_salary']} has been credited."
                     )
-                    session.add(notif)
         except Exception as e:
             try:
                 async with AsyncSessionLocal() as session:
@@ -146,13 +147,13 @@ async def process_transactions(run_id: uuid.UUID, employee_ids: list[uuid.UUID])
                         )
                         session.add(tx)
                         if employee:
-                            notif = Notification(
+                            create_notification(
+                                session=session,
                                 user_id=employee.user_id,
                                 type=NotificationType.PAYROLL_FAILED,
                                 title="Salary Processing Failed",
                                 message=f"Your salary processing failed. Reason: {str(e)}"
                             )
-                            session.add(notif)
             except Exception:
                 pass
     async with AsyncSessionLocal() as session:

@@ -1,6 +1,6 @@
 import uuid
 from decimal import Decimal
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -9,7 +9,7 @@ from app.dependencies.auth import get_current_user, require_role
 from app.dependencies.db import get_db
 from app.models.employee import Employee, EmployeeStatus
 from app.models.salary_component import SalaryComponent
-from app.models.user import User, UserRole
+from app.models.user import User
 from app.schemas.employee import (
     EmployeeCreate,
     EmployeeResponse,
@@ -17,13 +17,11 @@ from app.schemas.employee import (
     SalaryComponentCreate,
     SalaryComponentResponse,
 )
-from app.services.audit_service import log_action
+from app.services.audit_service import AuditLogger
 
 router = APIRouter(prefix="/api/employees", tags=["employees"])
 
-
 from datetime import date, datetime
-
 
 def serialize_changes(data):
     if isinstance(data, dict):
@@ -39,7 +37,6 @@ def serialize_changes(data):
     elif isinstance(data, uuid.UUID):
         return str(data)
     return data
-
 
 @router.get("", response_model=list[EmployeeResponse])
 async def list_employees(
@@ -67,7 +64,6 @@ async def list_employees(
     result = await db.execute(query)
     return result.scalars().all()
 
-
 @router.get("/{id}", response_model=EmployeeResponse)
 async def get_employee(
     id: uuid.UUID,
@@ -85,7 +81,6 @@ async def get_employee(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Employee not found",
         )
-
     if (
         current_user.role.value == "EMPLOYEE"
         and current_user.id != employee.user_id
@@ -94,13 +89,17 @@ async def get_employee(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Access forbidden: insufficient permissions",
         )
-
     return employee
 
-
-@router.post("", response_model=EmployeeResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=EmployeeResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(AuditLogger("CREATE", "employee"))]
+)
 async def create_employee(
     employee_data: EmployeeCreate,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role("ADMIN")),
 ):
@@ -120,7 +119,6 @@ async def create_employee(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Employee profile already exists for this user",
         )
-
     employee = Employee(
         user_id=employee_data.user_id,
         name=employee_data.name,
@@ -133,31 +131,25 @@ async def create_employee(
     )
     db.add(employee)
     await db.commit()
-
     result = await db.execute(
         select(Employee)
         .options(selectinload(Employee.salary_components))
         .where(Employee.id == employee.id)
     )
     employee = result.scalars().first()
-
-    changes = serialize_changes(employee_data.model_dump())
-    await log_action(
-        db=db,
-        performed_by=current_user.id,
-        action="CREATE",
-        entity="employee",
-        entity_id=employee.id,
-        changes=changes,
-    )
-
+    request.state.audit_changes = serialize_changes(employee_data.model_dump())
+    request.state.audit_entity_id = employee.id
     return employee
 
-
-@router.patch("/{id}", response_model=EmployeeResponse)
+@router.patch(
+    "/{id}",
+    response_model=EmployeeResponse,
+    dependencies=[Depends(AuditLogger("UPDATE", "employee"))]
+)
 async def update_employee(
     id: uuid.UUID,
     employee_data: EmployeeUpdate,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role("ADMIN")),
 ):
@@ -172,7 +164,6 @@ async def update_employee(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Employee not found",
         )
-
     update_dict = employee_data.model_dump(exclude_unset=True)
     changes = {}
     for key, val in update_dict.items():
@@ -183,37 +174,28 @@ async def update_employee(
                 "new": serialize_changes(val),
             }
             setattr(employee, key, val)
-
     if changes:
         await db.commit()
-
         result = await db.execute(
             select(Employee)
             .options(selectinload(Employee.salary_components))
             .where(Employee.id == id)
         )
         employee = result.scalars().first()
-
-        await log_action(
-            db=db,
-            performed_by=current_user.id,
-            action="UPDATE",
-            entity="employee",
-            entity_id=employee.id,
-            changes=changes,
-        )
-
+        request.state.audit_changes = changes
+        request.state.audit_entity_id = employee.id
     return employee
-
 
 @router.post(
     "/{id}/salary-components",
     response_model=SalaryComponentResponse,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(AuditLogger("ADD_SALARY_COMPONENT", "salary_component"))]
 )
 async def add_salary_component(
     id: uuid.UUID,
     component_data: SalaryComponentCreate,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role("ADMIN")),
 ):
@@ -224,7 +206,6 @@ async def add_salary_component(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Employee not found",
         )
-
     component = SalaryComponent(
         employee_id=id,
         name=component_data.name,
@@ -237,15 +218,6 @@ async def add_salary_component(
     db.add(component)
     await db.commit()
     await db.refresh(component)
-
-    changes = serialize_changes(component_data.model_dump())
-    await log_action(
-        db=db,
-        performed_by=current_user.id,
-        action="ADD_SALARY_COMPONENT",
-        entity="salary_component",
-        entity_id=component.id,
-        changes=changes,
-    )
-
+    request.state.audit_changes = serialize_changes(component_data.model_dump())
+    request.state.audit_entity_id = component.id
     return component

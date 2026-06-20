@@ -1,5 +1,5 @@
 import uuid
-from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks, status
+from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
@@ -15,23 +15,33 @@ from app.schemas.payroll import (
     PayrollTransactionResponse,
 )
 from app.services.payroll_service import trigger_payroll_run, retry_failed_transactions
+from app.services.audit_service import AuditLogger
 
 router = APIRouter(prefix="/api/payroll", tags=["payroll"])
 
-@router.post("/trigger", response_model=PayrollRunResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/trigger",
+    response_model=PayrollRunResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(AuditLogger("TRIGGER_PAYROLL", "payroll_run"))]
+)
 async def trigger_run(
     payload: PayrollTriggerRequest,
     background_tasks: BackgroundTasks,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role("ADMIN")),
 ):
-    return await trigger_payroll_run(
+    payroll_run = await trigger_payroll_run(
         db=db,
         month=payload.month,
         year=payload.year,
         admin_user_id=current_user.id,
         background_tasks=background_tasks,
     )
+    request.state.audit_changes = {"month": payload.month, "year": payload.year}
+    request.state.audit_entity_id = payroll_run.id
+    return payroll_run
 
 @router.get("/runs", response_model=list[PayrollRunResponse])
 async def list_runs(
