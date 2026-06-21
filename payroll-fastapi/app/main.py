@@ -16,6 +16,12 @@ app.include_router(notifications_router)
 
 
 
-@app.get("/")
+from fastapi.responses import HTMLResponse
+import os
+
+@app.get("/", response_class=HTMLResponse)
 async def root():
-    return {"message": "Payroll System API is running"}
+    path = os.path.join(os.path.dirname(__file__), "..", "static", "index.html")
+    with open(path, "r", encoding="utf-8") as f:
+        return f.read()
+

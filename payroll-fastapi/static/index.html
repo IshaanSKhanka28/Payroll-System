@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payroll Admin Dashboard</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #f8fafc;
+            color: #1e293b;
+            line-height: 1.5;
+            padding: 2rem 1rem;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+        h2 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            color: #0f172a;
+        }
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+        label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            color: #475569;
+        }
+        input, select {
+            width: 100%;
+            padding: 0.625rem;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            color: #1e293b;
+            background-color: #ffffff;
+        }
+        input:focus, select:focus {
+            outline: 2px solid #2563eb;
+            border-color: transparent;
+        }
+        button {
+            background-color: #0f172a;
+            color: #ffffff;
+            font-weight: 600;
+            padding: 0.625rem 1.25rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            transition: background-color 0.2s;
+        }
+        button:hover {
+            background-color: #1e293b;
+        }
+        button:disabled {
+            background-color: #94a3b8;
+            cursor: not-allowed;
+        }
+        .error-message {
+            color: #b91c1c;
+            background-color: #fef2f2;
+            border: 1px solid #fee2e2;
+            border-radius: 6px;
+            padding: 0.75rem;
+            font-size: 0.875rem;
+            margin-bottom: 1rem;
+            display: none;
+        }
+        .dashboard-layout {
+            display: none;
+        }
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 1.25rem;
+        }
+        .summary-banner {
+            font-weight: 600;
+            font-size: 1.1rem;
+            color: #0f172a;
+            margin-bottom: 1rem;
+            background-color: #f1f5f9;
+            padding: 0.75rem 1rem;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+        th, td {
+            text-align: left;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 0.9rem;
+        }
+        th {
+            background-color: #f8fafc;
+            color: #475569;
+            font-weight: 600;
+        }
+        .badge {
+            display: inline-block;
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 0.25rem 0.625rem;
+            border-radius: 9999px;
+            text-transform: uppercase;
+        }
+        .badge-success {
+            background-color: #dcfce7;
+            color: #15803d;
+        }
+        .badge-failed {
+            background-color: #fee2e2;
+            color: #b91c1c;
+        }
+        .badge-pending {
+            background-color: #f1f5f9;
+            color: #475569;
+        }
+        .failure-reason {
+            display: block;
+            font-size: 0.8rem;
+            color: #991b1b;
+            margin-top: 0.25rem;
+        }
+        .link-action {
+            color: #2563eb;
+            text-decoration: none;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        .link-action:hover {
+            text-decoration: underline;
+        }
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(15, 23, 42, 0.6);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            padding: 1rem;
+        }
+        .modal-card {
+            background-color: #ffffff;
+            border-radius: 8px;
+            max-width: 500px;
+            width: 100%;
+            padding: 2rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+        .modal-close {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            border: none;
+            background: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #64748b;
+        }
+        .modal-close:hover {
+            color: #1e293b;
+        }
+        .payslip-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-top: 1rem;
+            font-size: 0.9rem;
+        }
+        .payslip-label {
+            color: #64748b;
+            font-weight: 500;
+        }
+        .payslip-value {
+            color: #1e293b;
+            font-weight: 600;
+            text-align: right;
+        }
+        .divider {
+            grid-column: span 2;
+            height: 1px;
+            background-color: #e2e8f0;
+            margin: 0.5rem 0;
+        }
+        .payout-trigger-section {
+            display: flex;
+            align-items: flex-end;
+            gap: 1rem;
+        }
+        .payout-trigger-section .form-group {
+            margin-bottom: 0;
+            flex: 1;
+        }
+        .retry-box {
+            display: none;
+            margin-top: 1.5rem;
+            text-align: right;
+        }
+        .retry-btn {
+            background-color: #b91c1c;
+        }
+        .retry-btn:hover {
+            background-color: #991b1b;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="login-section" class="card">
+            <h2>Payroll System Login</h2>
+            <div id="login-error" class="error-message"></div>
+            <form id="login-form" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label for="email">Admin Email</label>
+                    <input type="email" id="email" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" required>
+                </div>
+                <button type="submit" id="login-btn">Login</button>
+            </form>
+        </div>
+
+        <div id="dashboard" class="dashboard-layout">
+            <div class="card">
+                <h2>Trigger Payroll</h2>
+                <div id="trigger-error" class="error-message"></div>
+                <form id="trigger-form" onsubmit="handleTrigger(event)">
+                    <div class="payout-trigger-section">
+                        <div class="form-group">
+                            <label for="month">Month</label>
+                            <select id="month">
+                                <option value="1">January</option>
+                                <option value="2">February</option>
+                                <option value="3">March</option>
+                                <option value="4">April</option>
+                                <option value="5">May</option>
+                                <option value="6">June</option>
+                                <option value="7">July</option>
+                                <option value="8">August</option>
+                                <option value="9">September</option>
+                                <option value="10">October</option>
+                                <option value="11">November</option>
+                                <option value="12">December</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="year">Year</label>
+                            <input type="number" id="year" min="2000" max="2100">
+                        </div>
+                        <button type="submit" id="trigger-btn">Trigger Payroll</button>
+                    </div>
+                </form>
+            </div>
+
+            <div id="status-card" class="card" style="display: none;">
+                <h2>Live Payroll Run Status</h2>
+                <div id="summary-banner" class="summary-banner">
+                    <span id="run-status-text">PROCESSING</span>
+                    <span id="run-counts-text">0 succeeded, 0 failed</span>
+                </div>
+                <table id="transactions-table">
+                    <thead>
+                        <tr>
+                            <th>Employee</th>
+                            <th>Department</th>
+                            <th>Net Salary</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="transactions-body"></tbody>
+                </table>
+                <div id="retry-section" class="retry-box">
+                    <button id="retry-btn" class="retry-btn" onclick="handleRetry()">Retry Failed Payouts</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="payslip-modal" class="modal-overlay" onclick="closePayslipModal(event)">
+        <div class="modal-card" onclick="event.stopPropagation()">
+            <button class="modal-close" onclick="closePayslipModal(event)">&times;</button>
+            <h2 style="margin-bottom: 1rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 0.5rem;">Payslip Details</h2>
+            <div class="payslip-grid" id="payslip-modal-content"></div>
+        </div>
+    </div>
+
+    <script>
+        let jwtToken = "";
+        let employeeMap = {};
+        let activeRunId = null;
+        let pollInterval = null;
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const today = new Date();
+            document.getElementById("month").value = today.getMonth() + 1;
+            document.getElementById("year").value = today.getFullYear();
+        });
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            const email = document.getElementById("email").value;
+            const password = document.getElementById("password").value;
+            const errorDiv = document.getElementById("login-error");
+            const btn = document.getElementById("login-btn");
+
+            errorDiv.style.display = "none";
+            btn.disabled = true;
+
+            try {
+                const res = await fetch("/api/auth/login", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await res.json();
+                if (!res.ok) {
+                    throw new Error(data.detail || "Authentication failed");
+                }
+
+                if (data.user.role !== "ADMIN") {
+                    throw new Error("Access denied. Admin role required.");
+                }
+
+                jwtToken = data.access_token;
+                document.getElementById("login-section").style.display = "none";
+                document.getElementById("dashboard").style.display = "block";
+
+                await loadEmployees();
+            } catch (err) {
+                errorDiv.innerText = err.message;
+                errorDiv.style.display = "block";
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        async function loadEmployees() {
+            try {
+                const res = await fetch("/api/employees?limit=100", {
+                    headers: { "Authorization": `Bearer ${jwtToken}` }
+                });
+                if (res.ok) {
+                    const employees = await res.json();
+                    employees.forEach(emp => {
+                        employeeMap[emp.id] = {
+                            name: emp.name,
+                            department: emp.department
+                        };
+                    });
+                }
+            } catch (err) {
+                console.error("Failed to load employees mapping:", err);
+            }
+        }
+
+        async function handleTrigger(e) {
+            e.preventDefault();
+            const month = parseInt(document.getElementById("month").value);
+            const year = parseInt(document.getElementById("year").value);
+            const errorDiv = document.getElementById("trigger-error");
+            const btn = document.getElementById("trigger-btn");
+
+            errorDiv.style.display = "none";
+            btn.disabled = true;
+
+            if (pollInterval) {
+                clearInterval(pollInterval);
+            }
+
+            try {
+                const res = await fetch("/api/payroll/trigger", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${jwtToken}`
+                    },
+                    body: JSON.stringify({ month, year })
+                });
+
+                const data = await res.json();
+                if (!res.ok) {
+                    throw new Error(data.detail || "Failed to trigger payroll");
+                }
+
+                activeRunId = data.id;
+                document.getElementById("status-card").style.display = "block";
+                document.getElementById("retry-section").style.display = "none";
+
+                renderInitialStatus(data);
+                startPolling();
+            } catch (err) {
+                errorDiv.innerText = err.message;
+                errorDiv.style.display = "block";
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        function renderInitialStatus(run) {
+            document.getElementById("run-status-text").innerText = run.status;
+            document.getElementById("run-counts-text").innerText = `0 succeeded, 0 failed`;
+            document.getElementById("transactions-body").innerHTML = `
+                <tr>
+                    <td colspan="5" style="text-align: center; color: #64748b;">Initializing processing queue...</td>
+                </tr>
+            `;
+        }
+
+        function startPolling() {
+            pollInterval = setInterval(fetchRunStatus, 2000);
+        }
+
+        async function fetchRunStatus() {
+            if (!activeRunId) return;
+
+            try {
+                const res = await fetch(`/api/payroll/runs/${activeRunId}`, {
+                    headers: { "Authorization": `Bearer ${jwtToken}` }
+                });
+
+                if (!res.ok) {
+                    throw new Error("Failed to fetch run details");
+                }
+
+                const run = await res.json();
+                updateDashboardTable(run);
+
+                if (run.status === "COMPLETED" || run.status === "FAILED" || run.status === "PARTIAL") {
+                    clearInterval(pollInterval);
+                    pollInterval = null;
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function updateDashboardTable(run) {
+            document.getElementById("run-status-text").innerText = run.status;
+
+            const txs = run.transactions || [];
+            let successCount = 0;
+            let failCount = 0;
+
+            const tbody = document.getElementById("transactions-body");
+            tbody.innerHTML = "";
+
+            txs.forEach(tx => {
+                const emp = employeeMap[tx.employee_id] || { name: "Unknown Employee", department: "Unknown" };
+                
+                if (tx.status === "SUCCESS") {
+                    successCount++;
+                } else if (tx.status === "FAILED") {
+                    failCount++;
+                }
+
+                const row = document.createElement("tr");
+
+                const nameCell = document.createElement("td");
+                nameCell.style.fontWeight = "500";
+                nameCell.innerText = emp.name;
+                row.appendChild(nameCell);
+
+                const deptCell = document.createElement("td");
+                deptCell.innerText = emp.department;
+                row.appendChild(deptCell);
+
+                const salaryCell = document.createElement("td");
+                salaryCell.innerText = `INR ${parseFloat(tx.net_salary).toFixed(2)}`;
+                row.appendChild(salaryCell);
+
+                const statusCell = document.createElement("td");
+                const badge = document.createElement("span");
+                badge.className = `badge badge-${tx.status.toLowerCase()}`;
+                badge.innerText = tx.status;
+                statusCell.appendChild(badge);
+
+                if (tx.status === "FAILED" && tx.failure_reason) {
+                    const reason = document.createElement("span");
+                    reason.className = "failure-reason";
+                    reason.innerText = tx.failure_reason;
+                    statusCell.appendChild(reason);
+                }
+                row.appendChild(statusCell);
+
+                const actionCell = document.createElement("td");
+                if (tx.status === "SUCCESS") {
+                    const actionLink = document.createElement("span");
+                    actionLink.className = "link-action";
+                    actionLink.innerText = "View Payslip";
+                    actionLink.onclick = () => showPayslip(tx.id);
+                    actionCell.appendChild(actionLink);
+                } else {
+                    actionCell.innerText = "-";
+                }
+                row.appendChild(actionCell);
+
+                tbody.appendChild(row);
+            });
+
+            document.getElementById("run-counts-text").innerText = `${successCount} succeeded, ${failCount} failed`;
+
+            if (run.status === "PARTIAL") {
+                document.getElementById("retry-section").style.display = "block";
+            } else {
+                document.getElementById("retry-section").style.display = "none";
+            }
+        }
+
+        async function handleRetry() {
+            if (!activeRunId) return;
+            const btn = document.getElementById("retry-btn");
+            btn.disabled = true;
+
+            try {
+                const res = await fetch(`/api/payroll/runs/${activeRunId}/retry`, {
+                    method: "POST",
+                    headers: { "Authorization": `Bearer ${jwtToken}` }
+                });
+
+                if (!res.ok) {
+                    const data = await res.json();
+                    throw new Error(data.detail || "Failed to trigger retry");
+                }
+
+                document.getElementById("retry-section").style.display = "none";
+                document.getElementById("run-status-text").innerText = "PROCESSING";
+
+                startPolling();
+            } catch (err) {
+                alert(err.message);
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        async function showPayslip(txId) {
+            try {
+                const res = await fetch(`/api/reports/payslip/${txId}`, {
+                    headers: { "Authorization": `Bearer ${jwtToken}` }
+                });
+
+                if (!res.ok) {
+                    throw new Error("Failed to load payslip data");
+                }
+
+                const data = await res.json();
+                const container = document.getElementById("payslip-modal-content");
+                container.innerHTML = "";
+
+                const fields = [
+                    { label: "Payslip Number", value: data.payslip_number },
+                    { label: "Employee Name", value: data.employee_name },
+                    { label: "Department", value: data.department },
+                    { label: "Designation", value: data.designation },
+                    { label: "Bank Account", value: data.bank_account },
+                    { label: "IFSC Code", value: data.ifsc_code },
+                    { label: "Gross Salary", value: `INR ${parseFloat(data.gross_salary).toFixed(2)}` },
+                    { label: "Deductions", value: `INR ${parseFloat(data.deductions).toFixed(2)}` },
+                    { label: "Net Salary", value: `INR ${parseFloat(data.net_salary).toFixed(2)}` }
+                ];
+
+                fields.forEach(f => {
+                    const labelSpan = document.createElement("div");
+                    labelSpan.className = "payslip-label";
+                    labelSpan.innerText = f.label;
+                    container.appendChild(labelSpan);
+
+                    const valSpan = document.createElement("div");
+                    valSpan.className = "payslip-value";
+                    valSpan.innerText = f.value;
+                    container.appendChild(valSpan);
+                });
+
+                if (data.itemized_components && data.itemized_components.length > 0) {
+                    const divider = document.createElement("div");
+                    divider.className = "divider";
+                    container.appendChild(divider);
+
+                    const heading = document.createElement("div");
+                    heading.style.fontWeight = "600";
+                    heading.style.gridColumn = "span 2";
+                    heading.style.marginTop = "0.25rem";
+                    heading.innerText = "Salary Components breakdown";
+                    container.appendChild(heading);
+
+                    data.itemized_components.forEach(comp => {
+                        const labelSpan = document.createElement("div");
+                        labelSpan.className = "payslip-label";
+                        labelSpan.innerText = `${comp.name} (${comp.type})`;
+                        container.appendChild(labelSpan);
+
+                        const valSpan = document.createElement("div");
+                        valSpan.className = "payslip-value";
+                        valSpan.innerText = comp.is_percentage ? `${comp.amount}%` : `INR ${parseFloat(comp.amount).toFixed(2)}`;
+                        container.appendChild(valSpan);
+                    });
+                }
+
+                document.getElementById("payslip-modal").style.display = "flex";
+            } catch (err) {
+                alert(err.message);
+            }
+        }
+
+        function closePayslipModal() {
+            document.getElementById("payslip-modal").style.display = "none";
+        }
+    </script>
+</body>
+</html>

@@ -156,5 +156,7 @@ code_explanations.md
 # Verification/Test Scripts and SQLite databases (Local-only)
 verify_*.py
 verify_*.db
+run_*.py
 payroll_prod.db
+
 
